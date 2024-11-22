@@ -20,6 +20,11 @@ numericalDf = pd.read_csv("/Users/gkb/Desktop/PODS/Capstone/rmpCapstoneNum.csv",
 qualitativeDf = pd.read_csv("/Users/gkb/Desktop/PODS/Capstone/rmpCapstoneQual.csv", header = None, 
             names = ["Major/Field", "University", "State"])
 
+noNanAvgRatings = numericalDf.dropna(subset=['AvgRating']).shape[0]
+
+
+threshold = 5
+
 
 
 # %% Question 1
@@ -53,6 +58,40 @@ plt.show()
 
 
 
+# Filter dataset to only include professors with >= threshold number of ratings
+filteredDf = numericalDf[numericalDf['numRatings'] >= threshold]
+
+
+
 
 
 # %% Question 2
+
+
+
+
+
+
+
+# %% Question 3
+
+avgRatingArray = np.array([filteredDf["AvgRating"]])
+avgDifficultyArray = np.array([filteredDf["AvgDifficulty"]])
+
+question3nans = np.array([np.isnan(avgRatingArray), np.isnan(avgDifficultyArray)], dtype = bool)
+
+# same info but in numbers
+question3nans2 = question3nans * 1
+
+# summing tells you how many movies each person is missing (0 means they rated all 3)
+question3nans3 = sum(question3nans2)
+
+missingData = np.where(question3nans3 > 0)
+
+# delete all users that have not rated all 3 movies
+# make sure you delete same users from all 3
+avgRatingArray = np.delete(avgRatingArray, missingData)
+avgDifficultyArray = np.delete(avgDifficultyArray, missingData)
+
+plt.scatter(avgRatingArray, avgDifficultyArray)
+
