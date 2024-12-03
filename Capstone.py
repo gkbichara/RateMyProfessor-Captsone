@@ -13,6 +13,11 @@ from scipy import stats
 import pandas as pd
 import random
 from scipy.stats import pearsonr
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error, r2_score
+
+
 
 
 random.seed(16906324)
@@ -233,5 +238,45 @@ q6u, q6p = stats.mannwhitneyu(hotProfRatings, notHotProfRatings)
 
 
 # %% Question 7
+
+
+q7df = noNanNumericalDf[noNanNumericalDf['numRatings'] > 15]
+
+
+avgRatingQ7Array = q7df["AvgRating"].values  
+avgDifficultyQ7Array = q7df["AvgDifficulty"].values  
+
+# find all rows that don't have nan in average rating and difficulty
+valid_mask = ~np.isnan(avgRatingQ7Array) & ~np.isnan(avgDifficultyQ7Array)
+
+
+q7x = avgDifficultyQ7Array[valid_mask].reshape(-1, 1)
+q7y= avgRatingQ7Array[valid_mask]
+
+
+q7x_train, q7x_test, q7y_train, q7y_test = train_test_split(q7x, q7y, test_size=0.2, random_state=42)
+
+# Initialize the regression model
+q7reg_model = LinearRegression()
+
+# Train the model on the training data
+q7reg_model.fit(q7x_train, q7y_train)
+
+# Predict the average rating on the test data
+q7y_pred = q7reg_model.predict(q7x_test)
+
+# Calculate R^2 and RMSE
+q7r2 = r2_score(q7y_test, q7y_pred)
+q7rmse = np.sqrt(mean_squared_error(q7y_test, q7y_pred))
+
+plt.figure(figsize=(10, 6))
+plt.scatter(q7y_test, q7y_pred, alpha=0.7)
+plt.xlabel('Actual AvgRating')
+plt.ylabel('Predicted AvgRating')
+plt.title('Actual vs Predicted Average Rating')
+plt.grid(axis='both', linestyle='--', alpha=0.7)
+plt.plot([q7y.min(), q7y.max()], [q7y.min(), q7y.max()], color='red', linestyle='--')  # Line of perfect prediction
+plt.show()
+
 
 
