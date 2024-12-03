@@ -19,8 +19,9 @@ from sklearn.metrics import mean_squared_error, r2_score
 
 
 
-
-random.seed(16906324)
+SEED = 16906324
+random.seed(SEED)
+np.random.seed(SEED)
 
 
 numericalDf = pd.read_csv("/Users/gkb/Desktop/PODS/Capstone/rmpCapstoneNum.csv", header = None, 
@@ -97,13 +98,20 @@ plt.xticks(avgRatingBins)  # Setting x-ticks to match the bin edges for clarity
 plt.show()
 
 
+q1maleProfsMean = maleProfRatings.mean()
+q1femaleProfsMean = femaleProfRatings.mean()
+q1std_combined = np.sqrt(((maleProfRatings.std() ** 2) + (femaleProfRatings.std() ** 2)) / 2)
+q1cohens_d = (q1maleProfsMean - q1femaleProfsMean) / q1std_combined
+print(q1cohens_d)
+
+
 # %% Question 2
 
 
 q2Threshold = q1Df['numRatings'].quantile(0.75)
 
-inexperiencedProfs = q1Df[q1Df['numRatings'] < q2Threshold]
-experiencedProfs = q1Df[q1Df['numRatings'] >= q2Threshold]
+inexperiencedProfs = q1Df[q1Df['numRatings'] <= q2Threshold]
+experiencedProfs = q1Df[q1Df['numRatings'] > q2Threshold]
 
 
 
@@ -132,15 +140,22 @@ inexperienced_ratings = inexperiencedProfs['AvgRating']
 
 
 q2u, q2p = stats.mannwhitneyu(experienced_ratings, inexperienced_ratings)
-print(q2p)
+
+q2experiencedProfsMean = experienced_ratings.mean()
+q2inexperiencedProfsMean = inexperienced_ratings.mean()
+q2std_combined = np.sqrt(((experienced_ratings.std() ** 2) + (inexperienced_ratings.std() ** 2)) / 2)
+q2cohens_d = (q2experiencedProfsMean - q2inexperiencedProfsMean) / q2std_combined
+print(q2cohens_d)
+
 
 
 # %% Question 3
 
 from scipy.stats import spearmanr
 
+q3Threshold = q1Df['numRatings'].quantile(0.9)
 
-q3df = noNanNumericalDf[noNanNumericalDf['numRatings'] > 15]
+q3df = noNanNumericalDf[noNanNumericalDf['numRatings'] > q3Threshold]
 
 
 avgRatingQ3Array = q3df["AvgRating"].values  
@@ -165,24 +180,37 @@ plt.show()
 q3rho, q3p = spearmanr(avgRatingQ3Array_clean, avgDifficultyArray_clean)
 
 
-
 # %% Question 4
 
 
+q4df = q1Df.dropna(subset=['numRatingsOnline'])
+
+# Split the filtered dataset into two groups based on the percentage of online ratings
+onlineProfessors = q4df[q4df['numRatingsOnline'] >= 0.5 * q4df['numRatings']]
+offlineProfessors = q4df[q4df['numRatingsOnline'] == 0]
 
 
+online_ratings = onlineProfessors['AvgRating']
+offline_ratings = offlineProfessors['AvgRating']
+
+
+
+q4u, q4p = stats.mannwhitneyu(online_ratings, offline_ratings)
+print(q4p)
 
 
 # %% Question 5
 
 
 noNanPropTakeAgainDf = numericalDf.dropna(subset=['propTakeAgain'])
-nonNanPropWithThreshold = noNanPropTakeAgainDf[noNanPropTakeAgainDf["numRatings"] > 15]
-# can do without imputation, have 12k ratings, Circle back to it
+
+q5Threshold = noNanPropTakeAgainDf['numRatings'].quantile(0.75)
+nonNanPropWithThreshold = noNanPropTakeAgainDf[noNanPropTakeAgainDf["numRatings"] > q5Threshold]
 
 
-avgRatingQ5Array = q3df["AvgRating"].values  
-propTakeAgainArray = q3df["propTakeAgain"].values  
+
+avgRatingQ5Array = nonNanPropWithThreshold["AvgRating"].values  
+propTakeAgainArray = nonNanPropWithThreshold["propTakeAgain"].values  
 
 
 valid_mask = ~np.isnan(avgRatingQ5Array) & ~np.isnan(propTakeAgainArray)
@@ -201,7 +229,9 @@ plt.grid(axis='both', linestyle='--', alpha=0.7)
 plt.show()
 
 
-q5r, q5p = pearsonr(avgRatingQ5Array_clean, propTakeAgainArray_clean)
+q5rho, q5p = spearmanr(avgRatingQ5Array_clean, propTakeAgainArray_clean)
+
+print(q5rho)
 
 
 
@@ -234,13 +264,18 @@ plt.show()
 
 q6u, q6p = stats.mannwhitneyu(hotProfRatings, notHotProfRatings)
 
+q6hotProfsMean = hotProfRatings.mean()
+q6notHotProfsMean = notHotProfRatings.mean()
+q6std_combined = np.sqrt(((hotProfRatings.std() ** 2) + (notHotProfRatings.std() ** 2)) / 2)
+q6cohens_d = (q6hotProfsMean - q6notHotProfsMean) / q6std_combined
+print(q6cohens_d)
 
 
 
 # %% Question 7
 
 
-q7df = noNanNumericalDf[noNanNumericalDf['numRatings'] > 15]
+q7df = noNanNumericalDf[noNanNumericalDf['numRatings'] > 18]
 
 
 avgRatingQ7Array = q7df["AvgRating"].values  
@@ -254,7 +289,7 @@ q7x = avgDifficultyQ7Array[valid_mask].reshape(-1, 1)
 q7y= avgRatingQ7Array[valid_mask]
 
 
-q7x_train, q7x_test, q7y_train, q7y_test = train_test_split(q7x, q7y, test_size=0.2, random_state=42)
+q7x_train, q7x_test, q7y_train, q7y_test = train_test_split(q7x, q7y, test_size=0.2, random_state=SEED)
 
 # Initialize the regression model
 q7reg_model = LinearRegression()
@@ -269,14 +304,27 @@ q7y_pred = q7reg_model.predict(q7x_test)
 q7r2 = r2_score(q7y_test, q7y_pred)
 q7rmse = np.sqrt(mean_squared_error(q7y_test, q7y_pred))
 
+# Scatter plot of actual vs predicted ratings
 plt.figure(figsize=(10, 6))
-plt.scatter(q7y_test, q7y_pred, alpha=0.7)
-plt.xlabel('Actual AvgRating')
-plt.ylabel('Predicted AvgRating')
-plt.title('Actual vs Predicted Average Rating')
+plt.scatter(q7x_test, q7y_test, alpha=0.7, label='Actual Ratings')
+plt.scatter(q7x_test, q7y_pred, alpha=0.7, color='red', label='Predicted Ratings', marker='x')
+
+# Plotting the line of best fit
+x_range = np.linspace(q7x_test.min(), q7x_test.max(), 100).reshape(-1, 1)
+y_range_pred = q7reg_model.predict(x_range)
+plt.plot(x_range, y_range_pred, color='blue', linestyle='--', label='Line of Best Fit')
+
+plt.xlabel('AvgDifficulty')
+plt.ylabel('AvgRating')
+plt.title('Actual vs Predicted Average Rating with Line of Best Fit')
 plt.grid(axis='both', linestyle='--', alpha=0.7)
-plt.plot([q7y.min(), q7y.max()], [q7y.min(), q7y.max()], color='red', linestyle='--')  # Line of perfect prediction
+plt.legend()
 plt.show()
 
+
+
+
+
+# %% Question 8
 
 
