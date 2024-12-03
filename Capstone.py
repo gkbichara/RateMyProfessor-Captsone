@@ -11,6 +11,11 @@ import matplotlib.pyplot as plt
 from sklearn.linear_model import LinearRegression
 from scipy import stats
 import pandas as pd
+import random
+from scipy.stats import pearsonr
+
+
+random.seed(16906324)
 
 
 numericalDf = pd.read_csv("/Users/gkb/Desktop/PODS/Capstone/rmpCapstoneNum.csv", header = None, 
@@ -55,7 +60,7 @@ plt.show()
 
 
 
-# Filter dataset to only include professors with >= threshold number of ratings
+# Filter dataset to only include professors with > threshold number of ratings
 q1Df = noNanNumericalDf[noNanNumericalDf['numRatings'] > threshold]
 
 femaleProfs = q1Df[q1Df["Female"] == 1]
@@ -90,9 +95,39 @@ plt.show()
 # %% Question 2
 
 
+q2Threshold = q1Df['numRatings'].quantile(0.75)
+
+inexperiencedProfs = q1Df[q1Df['numRatings'] < q2Threshold]
+experiencedProfs = q1Df[q1Df['numRatings'] >= q2Threshold]
 
 
 
+avgRatingBins = np.arange(0, 5.5, 0.5)  # Creating bins from 0 to 5 with a step of 0.5
+plt.figure(figsize=(10, 6))
+plt.hist(experiencedProfs['AvgRating'], bins=avgRatingBins, edgecolor='black', alpha=0.7)
+plt.title('Distribution of Exoerienced Profs Ratings')
+plt.xlabel('Average Rating')
+plt.ylabel('Frequency')
+plt.xticks(avgRatingBins)  # Setting x-ticks to match the bin edges for clarity
+plt.show()
+
+
+avgRatingBins = np.arange(0, 5.5, 0.5)  # Creating bins from 0 to 5 with a step of 0.5
+plt.figure(figsize=(10, 6))
+plt.hist(inexperiencedProfs['AvgRating'], bins=avgRatingBins, edgecolor='black', alpha=0.7)
+plt.title('Distribution of Inexperienced Profs Ratings')
+plt.xlabel('Average Rating')
+plt.ylabel('Frequency')
+plt.xticks(avgRatingBins)  # Setting x-ticks to match the bin edges for clarity
+plt.show()
+
+experienced_ratings = experiencedProfs['AvgRating']
+inexperienced_ratings = inexperiencedProfs['AvgRating']
+
+
+
+q2u, q2p = stats.mannwhitneyu(experienced_ratings, inexperienced_ratings)
+print(q2p)
 
 
 # %% Question 3
@@ -103,26 +138,30 @@ from scipy.stats import spearmanr
 q3df = noNanNumericalDf[noNanNumericalDf['numRatings'] > 15]
 
 
-avgRatingArray = q3df["AvgRating"].values  
+avgRatingQ3Array = q3df["AvgRating"].values  
 avgDifficultyArray = q3df["AvgDifficulty"].values  
 
+# find all rows that don't have nan in average rating and difficulty
+valid_mask = ~np.isnan(avgRatingQ3Array) & ~np.isnan(avgDifficultyArray)
 
-valid_mask = ~np.isnan(avgRatingArray) & ~np.isnan(avgDifficultyArray)
 
-
-avgRatingArray_clean = avgRatingArray[valid_mask]
+avgRatingQ3Array_clean = avgRatingQ3Array[valid_mask]
 avgDifficultyArray_clean = avgDifficultyArray[valid_mask]
 
 
 plt.figure(figsize=(10, 6))
-plt.scatter(avgRatingArray_clean, avgDifficultyArray_clean, alpha=0.7)
+plt.scatter(avgRatingQ3Array_clean, avgDifficultyArray_clean, alpha=0.7)
 plt.xlabel('Average Rating')
 plt.ylabel('Average Difficulty')
 plt.title('Average Rating vs Average Difficulty (Cleaned Data)')
 plt.grid(axis='both', linestyle='--', alpha=0.7)
 plt.show()
 
-rho = spearmanr(avgRatingArray_clean, avgDifficultyArray_clean)
+q3rho, q3p = spearmanr(avgRatingQ3Array_clean, avgDifficultyArray_clean)
+
+
+
+# %% Question 4
 
 
 
@@ -133,5 +172,66 @@ rho = spearmanr(avgRatingArray_clean, avgDifficultyArray_clean)
 
 
 noNanPropTakeAgainDf = numericalDf.dropna(subset=['propTakeAgain'])
-nonNanPropWithThreshold = noNanPropTakeAgainDf[noNanPropTakeAgainDf["numRatings"] > 3]
+nonNanPropWithThreshold = noNanPropTakeAgainDf[noNanPropTakeAgainDf["numRatings"] > 15]
 # can do without imputation, have 12k ratings, Circle back to it
+
+
+avgRatingQ5Array = q3df["AvgRating"].values  
+propTakeAgainArray = q3df["propTakeAgain"].values  
+
+
+valid_mask = ~np.isnan(avgRatingQ5Array) & ~np.isnan(propTakeAgainArray)
+
+
+avgRatingQ5Array_clean = avgRatingQ5Array[valid_mask]
+propTakeAgainArray_clean = propTakeAgainArray[valid_mask]
+
+
+plt.figure(figsize=(10, 6))
+plt.scatter(avgRatingQ5Array_clean, propTakeAgainArray_clean, alpha=0.7)
+plt.xlabel('Average Rating')
+plt.ylabel('Prop Take Again')
+plt.title('Average Rating vs Prop Take Again (Cleaned Data)')
+plt.grid(axis='both', linestyle='--', alpha=0.7)
+plt.show()
+
+
+q5r, q5p = pearsonr(avgRatingQ5Array_clean, propTakeAgainArray_clean)
+
+
+
+# %% Question 6
+
+# EDA
+hotProfs = q1Df[q1Df["Hot"] == 1]
+notHotProfs = q1Df[q1Df["Hot"] == 0]
+hotProfRatings = hotProfs["AvgRating"]
+notHotProfRatings = notHotProfs["AvgRating"]
+
+avgRatingBins = np.arange(0, 5.5, 0.5)  # Creating bins from 0 to 5 with a step of 0.5
+plt.figure(figsize=(10, 6))
+plt.hist(notHotProfRatings, bins=avgRatingBins, edgecolor='black', alpha=0.7)
+plt.title('Distribution of Not Hot Professor Ratings')
+plt.xlabel('Average Rating')
+plt.ylabel('Frequency')
+plt.xticks(avgRatingBins)  # Setting x-ticks to match the bin edges for clarity
+plt.show()
+
+
+avgRatingBins = np.arange(0, 5.5, 0.5)  # Creating bins from 0 to 5 with a step of 0.5
+plt.figure(figsize=(10, 6))
+plt.hist(hotProfRatings, bins=avgRatingBins, edgecolor='black', alpha=0.7)
+plt.title('Distribution of Hot Professor Ratings')
+plt.xlabel('Average Rating')
+plt.ylabel('Frequency')
+plt.xticks(avgRatingBins)  # Setting x-ticks to match the bin edges for clarity
+plt.show()
+
+q6u, q6p = stats.mannwhitneyu(hotProfRatings, notHotProfRatings)
+
+
+
+
+# %% Question 7
+
+
