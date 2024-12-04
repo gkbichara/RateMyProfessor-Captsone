@@ -16,6 +16,8 @@ from scipy.stats import pearsonr
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
+import seaborn as sns
+from sklearn.linear_model import Ridge
 
 
 
@@ -79,22 +81,23 @@ q1u, q1p = stats.mannwhitneyu(maleProfRatings, femaleProfRatings)
 
 
 avgRatingBins = np.arange(0, 5.5, 0.5)  # Creating bins from 0 to 5 with a step of 0.5
+
 plt.figure(figsize=(10, 6))
-plt.hist(femaleProfs['AvgRating'], bins=avgRatingBins, edgecolor='black', alpha=0.7)
-plt.title('Distribution of Female Ratings')
+
+# Plot histogram for female professors
+plt.hist(femaleProfs['AvgRating'], bins=avgRatingBins, alpha=0.5, label='Female Professors', color='yellow', edgecolor='black')
+
+# Plot histogram for male professors
+plt.hist(maleProfs['AvgRating'], bins=avgRatingBins, alpha=0.5, label='Male Professors', color='blue', edgecolor='black')
+
+# Adding labels and title
 plt.xlabel('Average Rating')
 plt.ylabel('Frequency')
-plt.xticks(avgRatingBins)  # Setting x-ticks to match the bin edges for clarity
-plt.show()
+plt.title('Distribution of Average Ratings by Gender')
+plt.xticks(avgRatingBins)
+plt.legend()
+plt.grid(axis='y', linestyle='--', alpha=0.7)
 
-
-avgRatingBins = np.arange(0, 5.5, 0.5)  # Creating bins from 0 to 5 with a step of 0.5
-plt.figure(figsize=(10, 6))
-plt.hist(maleProfs['AvgRating'], bins=avgRatingBins, edgecolor='black', alpha=0.7)
-plt.title('Distribution of Male Ratings')
-plt.xlabel('Average Rating')
-plt.ylabel('Frequency')
-plt.xticks(avgRatingBins)  # Setting x-ticks to match the bin edges for clarity
 plt.show()
 
 
@@ -104,6 +107,9 @@ q1std_combined = np.sqrt(((maleProfRatings.std() ** 2) + (femaleProfRatings.std(
 q1cohens_d = (q1maleProfsMean - q1femaleProfsMean) / q1std_combined
 print(q1cohens_d)
 
+
+male_median = maleProfs['AvgRating'].median()
+female_median = femaleProfs['AvgRating'].median()
 
 # %% Question 2
 
@@ -115,24 +121,22 @@ experiencedProfs = q1Df[q1Df['numRatings'] > q2Threshold]
 
 
 
-avgRatingBins = np.arange(0, 5.5, 0.5)  # Creating bins from 0 to 5 with a step of 0.5
-plt.figure(figsize=(10, 6))
-plt.hist(experiencedProfs['AvgRating'], bins=avgRatingBins, edgecolor='black', alpha=0.7)
-plt.title('Distribution of Exoerienced Profs Ratings')
+plt.hist(experiencedProfs['AvgRating'], bins=avgRatingBins, alpha=0.5, label='Experienced Professors', color='blue', edgecolor='black')
+
+# Plot histogram for inexperienced professors
+plt.hist(inexperiencedProfs['AvgRating'], bins=avgRatingBins, alpha=0.5, label='Inexperienced Professors', color='yellow', edgecolor='black')
+
+# Adding labels, title, and legend
 plt.xlabel('Average Rating')
 plt.ylabel('Frequency')
-plt.xticks(avgRatingBins)  # Setting x-ticks to match the bin edges for clarity
-plt.show()
+plt.title('Distribution of Average Ratings: Experienced vs Inexperienced Professors')
+plt.xticks(avgRatingBins)
+plt.legend()
+plt.grid(axis='y', linestyle='--', alpha=0.7)
 
 
-avgRatingBins = np.arange(0, 5.5, 0.5)  # Creating bins from 0 to 5 with a step of 0.5
-plt.figure(figsize=(10, 6))
-plt.hist(inexperiencedProfs['AvgRating'], bins=avgRatingBins, edgecolor='black', alpha=0.7)
-plt.title('Distribution of Inexperienced Profs Ratings')
-plt.xlabel('Average Rating')
-plt.ylabel('Frequency')
-plt.xticks(avgRatingBins)  # Setting x-ticks to match the bin edges for clarity
-plt.show()
+
+
 
 experienced_ratings = experiencedProfs['AvgRating']
 inexperienced_ratings = inexperiencedProfs['AvgRating']
@@ -146,6 +150,11 @@ q2inexperiencedProfsMean = inexperienced_ratings.mean()
 q2std_combined = np.sqrt(((experienced_ratings.std() ** 2) + (inexperienced_ratings.std() ** 2)) / 2)
 q2cohens_d = (q2experiencedProfsMean - q2inexperiencedProfsMean) / q2std_combined
 print(q2cohens_d)
+
+
+experienced_median = experiencedProfs['AvgRating'].median()
+inexperienced_median = inexperiencedProfs['AvgRating'].median()
+
 
 
 
@@ -186,7 +195,7 @@ q3rho, q3p = spearmanr(avgRatingQ3Array_clean, avgDifficultyArray_clean)
 q4df = q1Df.dropna(subset=['numRatingsOnline'])
 
 # Split the filtered dataset into two groups based on the percentage of online ratings
-onlineProfessors = q4df[q4df['numRatingsOnline'] >= 0.5 * q4df['numRatings']]
+onlineProfessors = q4df[q4df['numRatingsOnline'] >= (0.5 * q4df['numRatings'])]
 offlineProfessors = q4df[q4df['numRatingsOnline'] == 0]
 
 
@@ -197,6 +206,17 @@ offline_ratings = offlineProfessors['AvgRating']
 
 q4u, q4p = stats.mannwhitneyu(online_ratings, offline_ratings)
 print(q4p)
+
+q4onlineProfsMean = online_ratings.mean()
+q4offlineProfsMean = offline_ratings.mean()
+q4std_combined = np.sqrt(((online_ratings.std() ** 2) + (offline_ratings.std() ** 2)) / 2)
+q4cohens_d = (q4onlineProfsMean - q4offlineProfsMean) / q4std_combined
+print(q4cohens_d)
+
+
+online_median = onlineProfessors['AvgRating'].median()
+offline_median = offlineProfessors['AvgRating'].median()
+
 
 
 # %% Question 5
@@ -323,8 +343,55 @@ plt.show()
 
 
 
+q7intercept = q7reg_model.intercept_
+q7coefficient = q7reg_model.coef_[0]
+
+print(f"Intercept: {q7intercept}")
+print(f"Coefficient (AvgDifficulty): {q7coefficient}")
+
+
 
 
 # %% Question 8
 
 
+# Filter out all rows with missing values in any column to ensure complete data
+q8Df = q1Df.dropna()
+
+# Features and target for regression
+q8X = q8Df.drop(columns=['AvgRating'])  # All available features except the target variable
+q8y = q8Df['AvgRating']
+
+# Train-test split
+q8X_train, q8X_test, q8y_train, q8y_test = train_test_split(q8X, q8y, test_size=0.2, random_state=SEED)
+
+# Initialize and fit the regression model
+q8reg_model = Ridge(alpha=1.0)
+q8reg_model.fit(q8X_train, q8y_train)
+
+# Predict on the test set
+q8y_pred = q8reg_model.predict(q8X_test)
+
+# Calculate R^2 and RMSE
+q8r2 = r2_score(q8y_test, q8y_pred)
+q8rmse = np.sqrt(mean_squared_error(q8y_test, q8y_pred))
+
+# Print results
+print(f"R^2: {q8r2}")
+print(f"RMSE: {q8rmse}")
+
+# Print individual beta q8coefficients for each feature
+q8coefficients = pd.Series(q8reg_model.coef_, index=q8X.columns)
+print("\nCoefficients:")
+print(q8coefficients)
+
+# Visualization: Actual vs Predicted Ratings
+plt.figure(figsize=(10, 6))
+plt.scatter(q8y_pred, q8y_test, alpha=0.7)
+plt.xlabel('Predicted AvgRating')
+plt.ylabel('Actual AvgRating')
+plt.title('Actual vs Predicted Average Rating with Line of Best Fit')
+plt.grid(axis='both', linestyle='--', alpha=0.7)
+plt.plot([q8y.min(), q8y.max()], [q8y.min(), q8y.max()], color='red', linestyle='--', label='Perfect Fit Line')  # Line of perfect prediction
+plt.legend()
+plt.show()
