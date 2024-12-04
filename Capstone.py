@@ -18,6 +18,7 @@ from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_squared_error, r2_score
 import seaborn as sns
 from sklearn.linear_model import Ridge
+import statsmodels.api as sm
 
 
 
@@ -120,6 +121,7 @@ plt.title('Box Plot of Average Ratings by Gender')
 plt.xlabel('Gender')
 plt.ylabel('Average Rating')
 plt.grid(axis='y', linestyle='--', alpha=0.7)
+
 plt.show()
 
 
@@ -167,7 +169,17 @@ print(q2cohens_d)
 experienced_median = experiencedProfs['AvgRating'].median()
 inexperienced_median = inexperiencedProfs['AvgRating'].median()
 
+boxplot_data_q2 = q1Df[['AvgRating', 'numRatings']].copy()
+boxplot_data_q2['Experience'] = boxplot_data_q2['numRatings'].apply(lambda x: 'Inexperienced' if x <= q2Threshold else 'Experienced')
 
+# Create the box plot
+plt.figure(figsize=(10, 6))
+sns.boxplot(x='Experience', y='AvgRating', data=boxplot_data_q2, palette='Set3', width=0.5)
+plt.title('Box Plot of Average Ratings: Experienced vs Inexperienced Professors')
+plt.xlabel('Experience Level')
+plt.ylabel('Average Rating')
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+plt.show()
 
 
 # %% Question 3
@@ -191,14 +203,43 @@ avgDifficultyArray_clean = avgDifficultyArray[valid_mask]
 
 
 plt.figure(figsize=(10, 6))
-plt.scatter(avgRatingQ3Array_clean, avgDifficultyArray_clean, alpha=0.7)
-plt.xlabel('Average Rating')
-plt.ylabel('Average Difficulty')
-plt.title('Average Rating vs Average Difficulty (Cleaned Data)')
+plt.scatter(avgDifficultyArray_clean, avgRatingQ3Array_clean, alpha=0.7)
+plt.xlabel('Average Difficulty')
+plt.ylabel('Average Rating')
+plt.title('Average Difficulty vs Average Rating (Cleaned Data)')
 plt.grid(axis='both', linestyle='--', alpha=0.7)
 plt.show()
 
-q3rho, q3p = spearmanr(avgRatingQ3Array_clean, avgDifficultyArray_clean)
+q3rho, q3p = spearmanr(avgDifficultyArray_clean, avgRatingQ3Array_clean)
+
+
+avgDifficultyArray_clean_reshaped = avgDifficultyArray_clean.reshape(-1, 1)
+
+# Create and fit the model
+reg_model = LinearRegression()
+reg_model.fit(avgDifficultyArray_clean_reshaped, avgRatingQ3Array_clean)
+
+# Predict the ratings based on the difficulty values
+q3predicted_ratings = reg_model.predict(avgDifficultyArray_clean_reshaped)
+
+# Calculate residuals
+q3residuals = avgRatingQ3Array_clean - q3predicted_ratings
+
+# Plot the residuals with predicted ratings on x-axis
+plt.figure(figsize=(10, 6))
+plt.scatter(q3predicted_ratings, q3residuals, alpha=0.7, color='purple', edgecolor='black')
+plt.axhline(y=0, color='r', linestyle='--')  # Add a horizontal line at y=0
+plt.xlabel('Predicted Average Rating')
+plt.ylabel('Residuals (Actual Rating - Predicted Rating)')
+plt.title('Residual Plot: Predicted Average Rating vs Residuals')
+plt.grid(axis='both', linestyle='--', alpha=0.7)
+plt.show()
+
+plt.figure(figsize=(10, 6))
+sm.qqplot(q3residuals, line='45', fit=True)
+plt.title("Q-Q Plot of Residuals")
+plt.grid(axis='both', linestyle='--', alpha=0.7)
+plt.show()
 
 
 # %% Question 4
@@ -253,10 +294,10 @@ propTakeAgainArray_clean = propTakeAgainArray[valid_mask]
 
 
 plt.figure(figsize=(10, 6))
-plt.scatter(avgRatingQ5Array_clean, propTakeAgainArray_clean, alpha=0.7)
-plt.xlabel('Average Rating')
-plt.ylabel('Prop Take Again')
-plt.title('Average Rating vs Prop Take Again (Cleaned Data)')
+plt.scatter(propTakeAgainArray_clean, avgRatingQ5Array_clean, alpha=0.7)
+plt.xlabel('Prop Take Again')
+plt.ylabel('Average Rating')
+plt.title(' Prop Take Again vs Average Rating (Cleaned Data)')
 plt.grid(axis='both', linestyle='--', alpha=0.7)
 plt.show()
 
@@ -264,6 +305,36 @@ plt.show()
 q5rho, q5p = spearmanr(avgRatingQ5Array_clean, propTakeAgainArray_clean)
 
 print(q5rho)
+
+
+# Fit a linear regression model
+propTakeAgainArray_clean_reshaped = propTakeAgainArray_clean.reshape(-1, 1)
+
+# Create and fit the linear regression model
+reg_model = LinearRegression()
+reg_model.fit(propTakeAgainArray_clean_reshaped, avgRatingQ5Array_clean)
+
+# Predict the ratings based on the "Prop Take Again" values
+predicted_ratings = reg_model.predict(propTakeAgainArray_clean_reshaped)
+
+# Calculate residuals
+residuals = avgRatingQ5Array_clean - predicted_ratings
+
+# Plot the residuals against the predicted average ratings
+plt.figure(figsize=(10, 6))
+plt.scatter(predicted_ratings, residuals, alpha=0.7, color='purple', edgecolor='black')
+plt.axhline(y=0, color='r', linestyle='--')  # Add a horizontal line at y=0
+plt.xlabel('Predicted Average Rating')
+plt.ylabel('Residuals (Actual Rating - Predicted Rating)')
+plt.title('Residual Plot: Predicted Average Rating vs Residuals')
+plt.grid(axis='both', linestyle='--', alpha=0.7)
+plt.show()
+
+plt.figure(figsize=(10, 6))
+stats.probplot(residuals, dist="norm", plot=plt)
+plt.title("Q-Q Plot of Residuals")
+plt.grid(axis='both', linestyle='--', alpha=0.7)
+plt.show()
 
 
 
@@ -275,25 +346,28 @@ notHotProfs = q1Df[q1Df["Hot"] == 0]
 hotProfRatings = hotProfs["AvgRating"]
 notHotProfRatings = notHotProfs["AvgRating"]
 
+# Create bins for the histograms
 avgRatingBins = np.arange(0, 5.5, 0.5)  # Creating bins from 0 to 5 with a step of 0.5
+
+# Plot both histograms on the same figure
 plt.figure(figsize=(10, 6))
-plt.hist(notHotProfRatings, bins=avgRatingBins, edgecolor='black', alpha=0.7)
-plt.title('Distribution of Not Hot Professor Ratings')
+
+# Histogram for Not Hot Professors
+plt.hist(notHotProfRatings, bins=avgRatingBins, edgecolor='black', alpha=0.5, label='Not Hot Professors', color='blue')
+
+# Histogram for Hot Professors
+plt.hist(hotProfRatings, bins=avgRatingBins, edgecolor='black', alpha=0.5, label='Hot Professors', color='red')
+
+# Adding labels, title, and legend
+plt.title('Distribution of Average Ratings: Hot vs Not Hot Professors')
 plt.xlabel('Average Rating')
 plt.ylabel('Frequency')
 plt.xticks(avgRatingBins)  # Setting x-ticks to match the bin edges for clarity
+plt.legend()  # Add a legend to distinguish between Hot and Not Hot professors
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+
+# Show the combined plot
 plt.show()
-
-
-avgRatingBins = np.arange(0, 5.5, 0.5)  # Creating bins from 0 to 5 with a step of 0.5
-plt.figure(figsize=(10, 6))
-plt.hist(hotProfRatings, bins=avgRatingBins, edgecolor='black', alpha=0.7)
-plt.title('Distribution of Hot Professor Ratings')
-plt.xlabel('Average Rating')
-plt.ylabel('Frequency')
-plt.xticks(avgRatingBins)  # Setting x-ticks to match the bin edges for clarity
-plt.show()
-
 q6u, q6p = stats.mannwhitneyu(hotProfRatings, notHotProfRatings)
 
 q6hotProfsMean = hotProfRatings.mean()
