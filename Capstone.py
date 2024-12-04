@@ -111,6 +111,18 @@ print(q1cohens_d)
 male_median = maleProfs['AvgRating'].median()
 female_median = femaleProfs['AvgRating'].median()
 
+boxplot_data = q1Df[['AvgRating', 'Male', 'Female']].copy()
+boxplot_data['Gender'] = boxplot_data.apply(lambda x: 'Male' if x['Male'] == 1 else 'Female', axis=1)
+
+plt.figure(figsize=(10, 6))
+sns.boxplot(x='Gender', y='AvgRating', data=boxplot_data, palette='Set3', width=0.5)
+plt.title('Box Plot of Average Ratings by Gender')
+plt.xlabel('Gender')
+plt.ylabel('Average Rating')
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+plt.show()
+
+
 # %% Question 2
 
 
@@ -366,7 +378,7 @@ q8y = q8Df['AvgRating']
 q8X_train, q8X_test, q8y_train, q8y_test = train_test_split(q8X, q8y, test_size=0.2, random_state=SEED)
 
 # Initialize and fit the regression model
-q8reg_model = Ridge(alpha=1.0)
+q8reg_model = Ridge(alpha=11.0)
 q8reg_model.fit(q8X_train, q8y_train)
 
 # Predict on the test set
@@ -395,3 +407,7 @@ plt.grid(axis='both', linestyle='--', alpha=0.7)
 plt.plot([q8y.min(), q8y.max()], [q8y.min(), q8y.max()], color='red', linestyle='--', label='Perfect Fit Line')  # Line of perfect prediction
 plt.legend()
 plt.show()
+
+
+
+
