@@ -19,9 +19,13 @@ from sklearn.metrics import mean_squared_error, r2_score
 import seaborn as sns
 from sklearn.linear_model import Ridge
 import statsmodels.api as sm
+import statsmodels.stats.power as smp
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import roc_auc_score, roc_curve, confusion_matrix, accuracy_score
 
 
 
+alpha = 0.005
 SEED = 16906324
 random.seed(SEED)
 np.random.seed(SEED)
@@ -125,6 +129,35 @@ plt.grid(axis='y', linestyle='--', alpha=0.7)
 plt.show()
 
 
+# Create a separate DataFrame for regression analysis
+q1RegressionDf = q1Df.copy()
+
+# Gender encoding: 1 for Male, 0 for Female
+q1RegressionDf['q1Gender'] = q1RegressionDf.apply(lambda x: 1 if x['Male'] == 1 else 0, axis=1)
+
+# Independent variables: Gender and Number of Ratings
+q1X = q1RegressionDf[['q1Gender', 'numRatings']]
+
+# Add a constant for the intercept term
+q1X = sm.add_constant(q1X)
+
+# Dependent variable: Average Rating
+q1y = q1RegressionDf['AvgRating']
+
+# Split the data into training and test sets (80% training, 20% test)
+q1X_train, q1X_test, q1y_train, q1y_test = train_test_split(q1X, q1y, test_size=0.2, random_state=SEED)
+
+# Fit the OLS model using statsmodels
+q1Model_ols = sm.OLS(q1y_train, q1X_train).fit()
+
+# Predict on the test set
+q1y_pred_ols = q1Model_ols.predict(q1X_test)
+
+# Print the summary of the model, which includes coefficients, p-values, and other statistics
+print(q1Model_ols.summary())
+
+
+
 # %% Question 2
 
 
@@ -181,6 +214,12 @@ plt.ylabel('Average Rating')
 plt.grid(axis='y', linestyle='--', alpha=0.7)
 plt.show()
 
+n1_experienced = experiencedProfs.shape[0]  # Number of rows for experienced professors
+n2_inexperienced = inexperiencedProfs.shape[0]  # Number of rows for inexperienced professors
+q3analysis = smp.TTestIndPower()
+q3power = q3analysis.solve_power(effect_size=q2cohens_d, nobs1=n1_experienced, alpha=alpha, ratio=n2_inexperienced/n1_experienced, alternative='two-sided')
+
+print(f"Estimated Power of the Test: {q3power:.3f}")
 
 # %% Question 3
 
@@ -210,7 +249,11 @@ plt.title('Average Difficulty vs Average Rating (Cleaned Data)')
 plt.grid(axis='both', linestyle='--', alpha=0.7)
 plt.show()
 
-q3rho, q3p = spearmanr(avgDifficultyArray_clean, avgRatingQ3Array_clean)
+q3r, q3p1 = pearsonr(avgDifficultyArray_clean, avgRatingQ3Array_clean)
+q3rho, q3p2 = spearmanr(avgDifficultyArray_clean, avgRatingQ3Array_clean)
+print(q3r)
+print(q3rho)
+
 
 
 avgDifficultyArray_clean_reshaped = avgDifficultyArray_clean.reshape(-1, 1)
@@ -225,21 +268,26 @@ q3predicted_ratings = reg_model.predict(avgDifficultyArray_clean_reshaped)
 # Calculate residuals
 q3residuals = avgRatingQ3Array_clean - q3predicted_ratings
 
-# Plot the residuals with predicted ratings on x-axis
+# Plot the residuals in a histogram with a normal distribution line to show normality
 plt.figure(figsize=(10, 6))
-plt.scatter(q3predicted_ratings, q3residuals, alpha=0.7, color='purple', edgecolor='black')
-plt.axhline(y=0, color='r', linestyle='--')  # Add a horizontal line at y=0
-plt.xlabel('Predicted Average Rating')
-plt.ylabel('Residuals (Actual Rating - Predicted Rating)')
-plt.title('Residual Plot: Predicted Average Rating vs Residuals')
-plt.grid(axis='both', linestyle='--', alpha=0.7)
+
+# Plot histogram of residuals
+plt.hist(q3residuals, bins=30, density=True, alpha=0.6, color='purple', edgecolor='black')
+
+# Plot the normal distribution fit line
+mean_residuals = np.mean(q3residuals)
+std_residuals = np.std(q3residuals)
+x = np.linspace(min(q3residuals), max(q3residuals), 100)
+plt.plot(x, stats.norm.pdf(x, mean_residuals, std_residuals), color='red', linewidth=2, label='Normal Distribution')
+
+# Adding labels, title, and legend
+plt.xlabel('Residuals')
+plt.ylabel('Density')
+plt.title('Histogram of Residuals with Normal Distribution Line')
+plt.legend()
+plt.grid(axis='y', linestyle='--', alpha=0.7)
 plt.show()
 
-plt.figure(figsize=(10, 6))
-sm.qqplot(q3residuals, line='45', fit=True)
-plt.title("Q-Q Plot of Residuals")
-plt.grid(axis='both', linestyle='--', alpha=0.7)
-plt.show()
 
 
 # %% Question 4
@@ -256,6 +304,24 @@ online_ratings = onlineProfessors['AvgRating']
 offline_ratings = offlineProfessors['AvgRating']
 
 
+avgRatingBins = np.arange(0, 5.5, 0.5)  # Creating bins from 0 to 5 with a step of 0.5
+
+# Plot histogram for online professors
+plt.figure(figsize=(10, 6))
+plt.hist(online_ratings, bins=avgRatingBins, alpha=0.5, label='Online Professors', color='blue', edgecolor='black')
+
+# Plot histogram for offline professors
+plt.hist(offline_ratings, bins=avgRatingBins, alpha=0.5, label='Offline Professors', color='yellow', edgecolor='black')
+
+# Adding labels, title, and legend
+plt.xlabel('Average Rating')
+plt.ylabel('Frequency')
+plt.title('Distribution of Average Ratings: Online vs Offline Professors')
+plt.xticks(avgRatingBins)
+plt.legend()
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+plt.show()
+
 
 q4u, q4p = stats.mannwhitneyu(online_ratings, offline_ratings)
 print(q4p)
@@ -270,7 +336,31 @@ print(q4cohens_d)
 online_median = onlineProfessors['AvgRating'].median()
 offline_median = offlineProfessors['AvgRating'].median()
 
+n1_online = onlineProfessors.shape[0]  # Number of rows for online professors
+n2_offline = offlineProfessors.shape[0]  # Number of rows for offline professors
+q4analysis = smp.TTestIndPower()
+q4power = q4analysis.solve_power(effect_size=q4cohens_d, nobs1=n1_online, alpha=alpha, ratio=n2_offline/n1_online, alternative='two-sided')
+print(q4power)
 
+
+# Create a new DataFrame for boxplot analysis
+boxplot_data_q4 = q4df[['AvgRating', 'numRatingsOnline', 'numRatings']].copy()
+
+# Label each professor as either 'Online' or 'Offline'
+boxplot_data_q4['RatingSource'] = boxplot_data_q4.apply(
+    lambda x: 'Online' if x['numRatingsOnline'] >= (0.5 * x['numRatings']) else 'Offline', axis=1
+)
+
+# Plot the box plot to compare average ratings between online and offline professors
+plt.figure(figsize=(10, 6))
+sns.boxplot(x='RatingSource', y='AvgRating', data=boxplot_data_q4, palette='Set3', width=0.5)
+
+# Adding labels, title, and grid for better readability
+plt.title('Box Plot of Average Ratings: Online vs Offline Professors')
+plt.xlabel('Rating Source')
+plt.ylabel('Average Rating')
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+plt.show()
 
 # %% Question 5
 
@@ -305,6 +395,10 @@ plt.show()
 q5rho, q5p = spearmanr(avgRatingQ5Array_clean, propTakeAgainArray_clean)
 
 print(q5rho)
+
+q5r, q5p2 = pearsonr(avgRatingQ5Array_clean, propTakeAgainArray_clean)
+
+print(q5r)
 
 
 # Fit a linear regression model
@@ -438,6 +532,7 @@ print(f"Coefficient (AvgDifficulty): {q7coefficient}")
 
 
 
+
 # %% Question 8
 
 
@@ -483,5 +578,52 @@ plt.legend()
 plt.show()
 
 
+q8corr_matrix = q8Df.corr()
 
 
+plt.figure(figsize=(12, 10))
+sns.heatmap(q8corr_matrix, annot=True, cmap='coolwarm', linewidths=0.5)
+plt.title('Correlation Matrix for Features')
+plt.show()
+
+
+# %% Question 9
+
+q9X = q1Df[['AvgRating']].values  
+q9y = q1Df['Hot'].values       
+   
+q9X_train, q9X_test, q9y_train, q9y_test = train_test_split(q9X, q9y, test_size=0.2, random_state=SEED)
+
+q9model = LogisticRegression()
+
+q9model.fit(q9X_train, q9y_train)
+
+# Make predictions on the test set
+q9y_pred_prob = q9model.predict_proba(q9X_test)[:, 1]  # Probability of pepper being 1
+q9y_pred = q9model.predict(q9X_test)
+
+# Calculate AUC and Accuracy
+q9_auc = roc_auc_score(q9y_test, q9y_pred_prob)
+print(f"AUC: {q9_auc:.3f}")
+
+q9_accuracy = accuracy_score(q9y_test, q9y_pred)
+print(f"Accuracy: {q9_accuracy:.3f}")
+
+# Plot ROC Curve
+q9_fpr, q9_tpr, _ = roc_curve(q9y_test, q9y_pred_prob)
+plt.figure(figsize=(10, 6))
+plt.plot(q9_fpr, q9_tpr, color='blue', linewidth=2)
+plt.plot([0, 1], [0, 1], color='gray', linestyle='--')  # Diagonal line for random guess
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('ROC Curve')
+plt.show()
+
+# Plot Confusion Matrix
+q9_conf_matrix = confusion_matrix(q9y_test, q9y_pred)
+plt.figure(figsize=(8, 6))
+sns.heatmap(q9_conf_matrix, annot=True, fmt='d', cmap='Blues', cbar=False)
+plt.xlabel('Predicted Label')
+plt.ylabel('True Label')
+plt.title('Confusion Matrix')
+plt.show()
