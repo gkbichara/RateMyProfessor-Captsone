@@ -21,6 +21,10 @@ import statsmodels.api as sm
 import statsmodels.stats.power as smp
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score, roc_curve, confusion_matrix, accuracy_score
+from sklearn.linear_model import RidgeCV
+
+
+
 
 
 
@@ -221,7 +225,7 @@ from scipy.stats import spearmanr
 
 q3Threshold = noNanNumericalDf['numRatings'].quantile(0.9)
 
-q3df = noNanNumericalDf[noNanNumericalDf['numRatings'] > q3Threshold]
+q3df = noNanNumericalDf[noNanNumericalDf['numRatings'] > 3]
 
 
 avgRatingQ3Array = q3df["AvgRating"].values  
@@ -235,13 +239,16 @@ avgRatingQ3Array_clean = avgRatingQ3Array[valid_mask]
 avgDifficultyArray_clean = avgDifficultyArray[valid_mask]
 
 
-plt.figure(figsize=(10, 6))
-plt.scatter(avgDifficultyArray_clean, avgRatingQ3Array_clean, alpha=0.7)
-plt.xlabel('Average Difficulty')
-plt.ylabel('Average Rating')
-plt.title('Average Difficulty vs Average Rating (Cleaned Data)')
+plt.figure(figsize=(14, 9))
+plt.scatter(avgDifficultyArray_clean, avgRatingQ3Array_clean, alpha=0.7, s=60)
+plt.xlabel('Average Difficulty', fontsize=14)
+plt.ylabel('Average Rating', fontsize=14)
+plt.title('Average Difficulty vs Average Rating (Cleaned Data)', fontsize=16)
 plt.grid(axis='both', linestyle='--', alpha=0.7)
+plt.xticks(fontsize=12)
+plt.yticks(fontsize=12)
 plt.show()
+
 
 q3r, q3p1 = pearsonr(avgDifficultyArray_clean, avgRatingQ3Array_clean)
 q3rho, q3p2 = spearmanr(avgDifficultyArray_clean, avgRatingQ3Array_clean)
@@ -354,7 +361,7 @@ plt.show()
 
 
 noNanPropTakeAgainDf = numericalDf.dropna(subset=['propTakeAgain'])
-nonNanPropWithThreshold = noNanPropTakeAgainDf[noNanPropTakeAgainDf["numRatings"] > q3Threshold]
+nonNanPropWithThreshold = noNanPropTakeAgainDf[noNanPropTakeAgainDf["numRatings"] > 3]
 
 
 
@@ -473,11 +480,16 @@ plt.ylabel('Average Rating')
 plt.grid(axis='y', linestyle='--', alpha=0.7)
 plt.show()
 
+hot_median = hotProfs['AvgRating'].median()
+notHot_median = notHotProfs['AvgRating'].median()
+
+print(hot_median)
+print(notHot_median)
 
 # %% Question 7
 
 
-q7df = noNanNumericalDf[noNanNumericalDf['numRatings'] > 18]
+q7df = noNanNumericalDf[noNanNumericalDf['numRatings'] > 3]
 
 
 avgRatingQ7Array = q7df["AvgRating"].values  
@@ -556,8 +568,18 @@ plt.show()
 # Train-test split
 q8X_train, q8X_test, q8y_train, q8y_test = train_test_split(q8X, q8y, test_size=0.2, random_state=SEED)
 
+# Set a list of alpha values to test
+alphas = np.logspace(-4, 4, 50)
+
+# RidgeCV will internally do cross-validation for you
+ridge_cv = RidgeCV(alphas=alphas, cv=5, scoring='r2')  # You can adjust the number of folds
+ridge_cv.fit(q8X_train, q8y_train)
+
+# Print the best alpha
+print("Best alpha (RidgeCV):", ridge_cv.alpha_)
+
 # Initialize and fit the regression model
-q8reg_model = Ridge(alpha=11.0)
+q8reg_model = Ridge(alpha=11.5)
 q8reg_model.fit(q8X_train, q8y_train)
 
 # Predict on the test set
@@ -596,43 +618,54 @@ plt.show()
 q9X = q1Df[['AvgRating']].values  
 q9y = q1Df['Hot'].values       
    
+# Split the data into training and testing sets
 q9X_train, q9X_test, q9y_train, q9y_test = train_test_split(q9X, q9y, test_size=0.2, random_state=SEED)
 
+# Train Logistic Regression model
 q9model = LogisticRegression()
-
 q9model.fit(q9X_train, q9y_train)
 
-# Make predictions on the test set
+# Make predictions with probabilities on the test set
 q9y_pred_prob = q9model.predict_proba(q9X_test)[:, 1]  # Probability of pepper being 1
-q9y_pred = q9model.predict(q9X_test)
 
-# Calculate AUC and Accuracy
+# Calculate FPR, TPR, and thresholds for the ROC curve
+q9_fpr, q9_tpr, q9_thresholds = roc_curve(q9y_test, q9y_pred_prob)
+
+# Find the optimal threshold
+optimal_idx = np.argmax(q9_tpr - q9_fpr)
+optimal_threshold = q9_thresholds[optimal_idx]
+print(f"Optimal Threshold: {optimal_threshold:.3f}")
+
+# Apply the optimal threshold to make predictions
+q9y_pred_custom = (q9y_pred_prob >= optimal_threshold).astype(int)
+
+# Calculate the AUC score with the predicted probabilities
 q9_auc = roc_auc_score(q9y_test, q9y_pred_prob)
 print(f"AUC: {q9_auc:.3f}")
 
-q9_accuracy = accuracy_score(q9y_test, q9y_pred)
-print(f"Accuracy: {q9_accuracy:.3f}")
+# Calculate accuracy using the custom threshold
+q9_accuracy = accuracy_score(q9y_test, q9y_pred_custom)
+print(f"Accuracy with Optimal Threshold: {q9_accuracy:.3f}")
 
-# Plot ROC Curve
-q9_fpr, q9_tpr, _ = roc_curve(q9y_test, q9y_pred_prob)
-plt.figure(figsize=(10, 6))
-plt.plot(q9_fpr, q9_tpr, color='blue', linewidth=2)
-plt.plot([0, 1], [0, 1], color='gray', linestyle='--')  # Diagonal line for random guess
-plt.xlabel('False Positive Rate')
-plt.ylabel('True Positive Rate')
-plt.title('ROC Curve')
-plt.show()
-
-# Plot Confusion Matrix
-q9_conf_matrix = confusion_matrix(q9y_test, q9y_pred)
+# Plot Confusion Matrix using the custom threshold
+q9_conf_matrix = confusion_matrix(q9y_test, q9y_pred_custom)
 plt.figure(figsize=(8, 6))
 sns.heatmap(q9_conf_matrix, annot=True, fmt='d', cmap='Blues', cbar=False)
 plt.xlabel('Predicted Label')
 plt.ylabel('True Label')
-plt.title('Confusion Matrix')
+plt.title('Confusion Matrix with Optimal Threshold')
 plt.show()
 
-
+# Plot ROC Curve and highlight the optimal point
+plt.figure(figsize=(10, 6))
+plt.plot(q9_fpr, q9_tpr, color='blue', linewidth=2, label='ROC Curve')
+plt.plot([0, 1], [0, 1], color='gray', linestyle='--')  # Diagonal line for random guess
+plt.scatter(q9_fpr[optimal_idx], q9_tpr[optimal_idx], color='red', label=f'Optimal Threshold = {optimal_threshold:.3f}', zorder=5)
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('ROC Curve with Optimal Threshold')
+plt.legend()
+plt.show()
 
 # %% Question 10
 
