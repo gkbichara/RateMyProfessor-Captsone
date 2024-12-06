@@ -116,11 +116,11 @@ print(q1cohens_d)
 male_median = maleProfs['AvgRating'].median()
 female_median = femaleProfs['AvgRating'].median()
 
-boxplot_data = q1Df[['AvgRating', 'Male', 'Female']].copy()
-boxplot_data['Gender'] = boxplot_data.apply(lambda x: 'Male' if x['Male'] == 1 else 'Female', axis=1)
+boxplot_data_q1 = q1Df[['AvgRating', 'Male', 'Female']].copy()
+boxplot_data_q1['Gender'] = boxplot_data_q1.apply(lambda x: 'Male' if x['Male'] == 1 else 'Female', axis=1)
 
 plt.figure(figsize=(10, 6))
-sns.boxplot(x='Gender', y='AvgRating', data=boxplot_data, palette='Set3', width=0.5)
+sns.boxplot(x='Gender', y='AvgRating', data=boxplot_data_q1, palette='Set3', width=0.5)
 plt.title('Box Plot of Average Ratings by Gender')
 plt.xlabel('Gender')
 plt.ylabel('Average Rating')
@@ -214,18 +214,13 @@ plt.ylabel('Average Rating')
 plt.grid(axis='y', linestyle='--', alpha=0.7)
 plt.show()
 
-n1_experienced = experiencedProfs.shape[0]  # Number of rows for experienced professors
-n2_inexperienced = inexperiencedProfs.shape[0]  # Number of rows for inexperienced professors
-q3analysis = smp.TTestIndPower()
-q3power = q3analysis.solve_power(effect_size=q2cohens_d, nobs1=n1_experienced, alpha=alpha, ratio=n2_inexperienced/n1_experienced, alternative='two-sided')
 
-print(f"Estimated Power of the Test: {q3power:.3f}")
 
 # %% Question 3
 
 from scipy.stats import spearmanr
 
-q3Threshold = q1Df['numRatings'].quantile(0.9)
+q3Threshold = noNanNumericalDf['numRatings'].quantile(0.9)
 
 q3df = noNanNumericalDf[noNanNumericalDf['numRatings'] > q3Threshold]
 
@@ -336,12 +331,6 @@ print(q4cohens_d)
 online_median = onlineProfessors['AvgRating'].median()
 offline_median = offlineProfessors['AvgRating'].median()
 
-n1_online = onlineProfessors.shape[0]  # Number of rows for online professors
-n2_offline = offlineProfessors.shape[0]  # Number of rows for offline professors
-q4analysis = smp.TTestIndPower()
-q4power = q4analysis.solve_power(effect_size=q4cohens_d, nobs1=n1_online, alpha=alpha, ratio=n2_offline/n1_online, alternative='two-sided')
-print(q4power)
-
 
 # Create a new DataFrame for boxplot analysis
 boxplot_data_q4 = q4df[['AvgRating', 'numRatingsOnline', 'numRatings']].copy()
@@ -366,9 +355,7 @@ plt.show()
 
 
 noNanPropTakeAgainDf = numericalDf.dropna(subset=['propTakeAgain'])
-
-q5Threshold = noNanPropTakeAgainDf['numRatings'].quantile(0.75)
-nonNanPropWithThreshold = noNanPropTakeAgainDf[noNanPropTakeAgainDf["numRatings"] > q5Threshold]
+nonNanPropWithThreshold = noNanPropTakeAgainDf[noNanPropTakeAgainDf["numRatings"] > q3Threshold]
 
 
 
@@ -470,6 +457,22 @@ q6std_combined = np.sqrt(((hotProfRatings.std() ** 2) + (notHotProfRatings.std()
 q6cohens_d = (q6hotProfsMean - q6notHotProfsMean) / q6std_combined
 print(q6cohens_d)
 
+# Box Plot for Hot vs Not Hot Professors' Ratings
+
+# Prepare the data for the boxplot
+boxplot_data_q6 = pd.DataFrame({
+    'Average Rating': pd.concat([hotProfRatings, notHotProfRatings]),
+    'Category': ['Hot Professors'] * len(hotProfRatings) + ['Not Hot Professors'] * len(notHotProfRatings)
+})
+
+# Create the box plot
+plt.figure(figsize=(10, 6))
+sns.boxplot(x='Category', y='Average Rating', data=boxplot_data_q6, palette='Set3', width=0.5)
+plt.title('Box Plot of Average Ratings: Hot vs Not Hot Professors')
+plt.xlabel('Professor Category')
+plt.ylabel('Average Rating')
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+plt.show()
 
 
 # %% Question 7
@@ -543,6 +546,14 @@ q8Df = q1Df.dropna()
 q8X = q8Df.drop(columns=['AvgRating'])  # All available features except the target variable
 q8y = q8Df['AvgRating']
 
+q8corr_matrix = q8Df.corr()
+
+
+plt.figure(figsize=(12, 10))
+sns.heatmap(q8corr_matrix, annot=True, cmap='coolwarm', linewidths=0.5)
+plt.title('Correlation Matrix for Features')
+plt.show()
+
 # Train-test split
 q8X_train, q8X_test, q8y_train, q8y_test = train_test_split(q8X, q8y, test_size=0.2, random_state=SEED)
 
@@ -578,13 +589,7 @@ plt.legend()
 plt.show()
 
 
-q8corr_matrix = q8Df.corr()
 
-
-plt.figure(figsize=(12, 10))
-sns.heatmap(q8corr_matrix, annot=True, cmap='coolwarm', linewidths=0.5)
-plt.title('Correlation Matrix for Features')
-plt.show()
 
 
 # %% Question 9
@@ -627,3 +632,8 @@ plt.xlabel('Predicted Label')
 plt.ylabel('True Label')
 plt.title('Confusion Matrix')
 plt.show()
+
+
+
+# %% Question 10
+
