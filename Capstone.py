@@ -669,3 +669,9 @@ plt.show()
 
 # %% Question 10
 
+
+q10X = q1Df.drop(columns=['Hot'])  
+q10y = q1Df['Hot']  
+
+
+q10X_train, q10X_test, q10y_train, q10y_test = train_test_split(q10X, q10y, test_size=0.2, random_state=SEED)
