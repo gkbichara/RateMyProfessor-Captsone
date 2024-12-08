@@ -670,8 +670,55 @@ plt.show()
 # %% Question 10
 
 
-q10X = q1Df.drop(columns=['Hot'])  
-q10y = q1Df['Hot']  
+q10X = nonNanPropWithThreshold.drop(columns=['Hot'])  
+q10y = nonNanPropWithThreshold['Hot']  
 
 
+# Split the data into training and testing sets
 q10X_train, q10X_test, q10y_train, q10y_test = train_test_split(q10X, q10y, test_size=0.2, random_state=SEED)
+
+# Train Logistic Regression model
+q10model = LogisticRegression(max_iter=1000)
+q10model.fit(q10X_train, q10y_train)
+
+# Make predictions with probabilities on the test set
+q10y_pred_prob = q10model.predict_proba(q10X_test)[:, 1]  # Probability of pepper being 1
+
+# Calculate FPR, TPR, and thresholds for the ROC curve
+q10_fpr, q10_tpr, q10_thresholds = roc_curve(q10y_test, q10y_pred_prob)
+
+# Find the optimal threshold
+optimal_idx = np.argmax(q10_tpr - q10_fpr)
+optimal_threshold = q10_thresholds[optimal_idx]
+print(f"Optimal Threshold: {optimal_threshold:.3f}")
+
+# Apply the optimal threshold to make predictions
+q10y_pred_custom = (q10y_pred_prob >= optimal_threshold).astype(int)
+
+# Calculate the AUC score with the predicted probabilities
+q10_auc = roc_auc_score(q10y_test, q10y_pred_prob)
+print(f"AUC: {q10_auc:.3f}")
+
+# Calculate accuracy using the custom threshold
+q10_accuracy = accuracy_score(q10y_test, q10y_pred_custom)
+print(f"Accuracy with Optimal Threshold: {q10_accuracy:.3f}")
+
+# Plot Confusion Matrix using the custom threshold
+q10_conf_matrix = confusion_matrix(q10y_test, q10y_pred_custom)
+plt.figure(figsize=(8, 6))
+sns.heatmap(q10_conf_matrix, annot=True, fmt='d', cmap='Blues', cbar=False)
+plt.xlabel('Predicted Label')
+plt.ylabel('True Label')
+plt.title('Confusion Matrix with Optimal Threshold')
+plt.show()
+
+# Plot ROC Curve and highlight the optimal point
+plt.figure(figsize=(10, 6))
+plt.plot(q10_fpr, q10_tpr, color='blue', linewidth=2, label='ROC Curve')
+plt.plot([0, 1], [0, 1], color='gray', linestyle='--')  # Diagonal line for random guess
+plt.scatter(q10_fpr[optimal_idx], q10_tpr[optimal_idx], color='red', label=f'Optimal Threshold = {optimal_threshold:.3f}', zorder=5)
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('ROC Curve with Optimal Threshold')
+plt.legend()
+plt.show()
