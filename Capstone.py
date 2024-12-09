@@ -113,7 +113,6 @@ q1maleProfsMean = maleProfRatings.mean()
 q1femaleProfsMean = femaleProfRatings.mean()
 q1std_combined = np.sqrt(((maleProfRatings.std() ** 2) + (femaleProfRatings.std() ** 2)) / 2)
 q1cohens_d = (q1maleProfsMean - q1femaleProfsMean) / q1std_combined
-print(q1cohens_d)
 
 
 male_median = maleProfs['AvgRating'].median()
@@ -199,7 +198,7 @@ q2experiencedProfsMean = experienced_ratings.mean()
 q2inexperiencedProfsMean = inexperienced_ratings.mean()
 q2std_combined = np.sqrt(((experienced_ratings.std() ** 2) + (inexperienced_ratings.std() ** 2)) / 2)
 q2cohens_d = (q2experiencedProfsMean - q2inexperiencedProfsMean) / q2std_combined
-print(q2cohens_d)
+
 
 
 experienced_median = experiencedProfs['AvgRating'].median()
@@ -667,6 +666,13 @@ plt.title('ROC Curve with Optimal Threshold')
 plt.legend()
 plt.show()
 
+q9hot_count = q9y.sum()  # Count of hot professors (Hot = 1)
+q9not_hot_count = len(q9y) - q9hot_count  # Count of not hot professors (Hot = 0)
+
+print(q9hot_count)
+print(q9not_hot_count)
+
+
 # %% Question 10
 
 
@@ -722,3 +728,172 @@ plt.ylabel('True Positive Rate')
 plt.title('ROC Curve with Optimal Threshold')
 plt.legend()
 plt.show()
+
+q10hot_count = q10y.sum()  # Count of hot professors (Hot = 1)
+q10not_hot_count = len(q10y) - q10hot_count  # Count of not hot professors (Hot = 0)
+
+
+
+
+# %% Extra credit
+
+# Merge numerical and qualitative datasets for state and major analysis
+mergedDf = pd.concat([numericalDf, qualitativeDf], axis=1)
+
+# Rename columns for clarity
+mergedDf.columns = ["AvgRating", "AvgDifficulty", "numRatings", "Hot", "propTakeAgain", 
+                     "numRatingsOnline", "Male", "Female", "Major", "University", "State"]
+
+
+mergedDf = mergedDf.dropna(subset=['AvgRating'])
+
+ThresholdergedDf = mergedDf[mergedDf['numRatings'] > 4]
+
+# Find unique majors and states in the original dataset
+original_majors = set(mergedDf['Major'].unique())
+original_states = set(mergedDf['State'].unique())
+
+# Find unique majors and states in the filtered dataset
+filtered_majors = set(ThresholdergedDf['Major'].unique())
+filtered_states = set(ThresholdergedDf['State'].unique())
+
+# Determine eliminated majors and states
+eliminated_majors = original_majors - filtered_majors
+eliminated_states = original_states - filtered_states
+
+# Define a set of all US state abbreviations
+us_states = {
+    'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 
+    'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 'NC', 'ND', 
+    'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'
+}
+
+# Add a new column to classify professors as US or Non-US based on the state
+ThresholdergedDf['Location'] = ThresholdergedDf['State'].apply(lambda x: 'US' if x in us_states else 'Non-US')
+
+# Group by Location and calculate summary statistics
+location_summary = ThresholdergedDf.groupby('Location').agg(
+    avg_rating=('AvgRating', 'mean'),
+    avg_difficulty=('AvgDifficulty', 'mean'),
+    num_professors=('AvgRating', 'count'),
+    total_ratings=('numRatings', 'sum'),
+    online_ratings=('numRatingsOnline', 'sum')
+).reset_index()
+
+# Print the summary table
+print(location_summary)
+
+# Plot histogram for US vs Non-US Professors
+plt.figure(figsize=(10, 6))
+bins = np.arange(0, 5.5, 0.5)  # Bins from 0 to 5 with a step of 0.5
+
+# Histogram for US Professors
+plt.hist(ThresholdergedDf[ThresholdergedDf['Location'] == 'US']['AvgRating'], bins=bins, alpha=0.5, 
+         label='US Professors', color='blue', edgecolor='black')
+
+# Histogram for Non-US Professors
+plt.hist(ThresholdergedDf[ThresholdergedDf['Location'] == 'Non-US']['AvgRating'], bins=bins, alpha=0.5, 
+         label='Non-US Professors', color='yellow', edgecolor='black')
+
+# Adding labels, title, and legend
+plt.title('Distribution of Average Ratings: US vs Non-US Professors')
+plt.xlabel('Average Rating')
+plt.ylabel('Frequency')
+plt.xticks(bins)
+plt.legend()
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+plt.show()
+
+# Boxplot for US vs Non-US Professors
+plt.figure(figsize=(10, 6))
+sns.boxplot(x='Location', y='AvgRating', data=ThresholdergedDf, palette='Set3', width=0.5)
+
+# Adding labels, title, and grid
+plt.title('Box Plot of Average Ratings: US vs Non-US Professors')
+plt.xlabel('Location')
+plt.ylabel('Average Rating')
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+plt.show()
+
+# Separate the ratings for US and Non-US professors
+us_ratings = ThresholdergedDf[ThresholdergedDf['Location'] == 'US']['AvgRating']
+non_us_ratings = ThresholdergedDf[ThresholdergedDf['Location'] == 'Non-US']['AvgRating']
+
+# Perform Mann-Whitney U-Test for US vs Non-US professors
+u_statistic_us, p_value_us = stats.mannwhitneyu(us_ratings, non_us_ratings, alternative='two-sided')
+
+
+# Calculate Cohen's d for US vs Non-US
+mean_us = us_ratings.mean()
+mean_non_us = non_us_ratings.mean()
+std_combined = np.sqrt(((us_ratings.std() ** 2) + (non_us_ratings.std() ** 2)) / 2)
+cohens_d_us = (mean_us - mean_non_us) / std_combined
+
+
+
+# Define STEM-related keywords
+stem_keywords = ["Engineering", "Science", "Mathematics", "Technology", "STEM", "Physics", "Chemistry", "Biology"]
+
+# Add a new column to classify professors as STEM or Non-STEM
+ThresholdergedDf['STEM'] = ThresholdergedDf['Major'].str.contains('|'.join(stem_keywords), case=False, na=False)
+
+# Calculate summary statistics for STEM and Non-STEM professors
+stem_summary = ThresholdergedDf.groupby('STEM').agg(
+    median_rating=('AvgRating', 'median'),
+    median_difficulty=('AvgDifficulty', 'median'),
+    num_professors=('AvgRating', 'count'),
+    total_ratings=('numRatings', 'sum')
+).reset_index()
+
+# Rename categories for clarity
+stem_summary['STEM'] = stem_summary['STEM'].replace({True: 'STEM', False: 'Non-STEM'})
+
+# Print summary
+print(stem_summary)
+
+# Visualization: Histogram of Ratings for STEM vs. Non-STEM
+plt.figure(figsize=(10, 6))
+bins = np.arange(0, 5.5, 0.5)  # Bins from 0 to 5 with a step of 0.5
+
+# Histogram for STEM professors
+plt.hist(ThresholdergedDf[ThresholdergedDf['STEM'] == True]['AvgRating'], bins=bins, alpha=0.5, 
+         label='STEM Professors', color='blue', edgecolor='black')
+
+# Histogram for Non-STEM professors
+plt.hist(ThresholdergedDf[ThresholdergedDf['STEM'] == False]['AvgRating'], bins=bins, alpha=0.5, 
+         label='Non-STEM Professors', color='yellow', edgecolor='black')
+
+# Adding labels, title, and legend
+plt.title('Distribution of Average Ratings: STEM vs Non-STEM Professors')
+plt.xlabel('Average Rating')
+plt.ylabel('Frequency')
+plt.xticks(bins)
+plt.legend()
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+plt.show()
+
+# Boxplot for STEM vs Non-STEM Professors
+plt.figure(figsize=(10, 6))
+sns.boxplot(x='STEM', y='AvgRating', data=ThresholdergedDf, palette='Set3', width=0.5)
+
+# Adding labels, title, and grid
+plt.title('Box Plot of Average Ratings: STEM vs Non-STEM Professors')
+plt.xlabel('Category')
+plt.ylabel('Average Rating')
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+plt.show()
+
+# Perform Mann-Whitney U-Test for STEM vs Non-STEM
+stem_ratings = ThresholdergedDf[ThresholdergedDf['STEM'] == True]['AvgRating']
+non_stem_ratings = ThresholdergedDf[ThresholdergedDf['STEM'] == False]['AvgRating']
+
+# Perform Mann-Whitney U-Test for STEM vs Non-STEM professors
+u_statistic_stem, p_value_stem = stats.mannwhitneyu(stem_ratings, non_stem_ratings, alternative='two-sided')
+print(f"Mann-Whitney U Test (STEM vs Non-STEM): U-statistic = {u_statistic_stem}, p-value = {p_value_stem}")
+
+# Calculate Cohen's d for STEM vs Non-STEM
+median_stem = stem_ratings.median()
+median_non_stem = non_stem_ratings.median()
+std_combined_stem = np.sqrt(((stem_ratings.std() ** 2) + (non_stem_ratings.std() ** 2)) / 2)
+cohens_d_stem = (median_stem - median_non_stem) / std_combined_stem
+print(f"Cohen's d (STEM vs Non-STEM): {cohens_d_stem}")
