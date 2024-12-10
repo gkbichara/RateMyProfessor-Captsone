@@ -780,8 +780,6 @@ location_summary = ThresholdergedDf.groupby('Location').agg(
     online_ratings=('numRatingsOnline', 'sum')
 ).reset_index()
 
-# Print the summary table
-print(location_summary)
 
 # Plot histogram for US vs Non-US Professors
 plt.figure(figsize=(10, 6))
@@ -837,6 +835,7 @@ stem_keywords = ["Engineering", "Science", "Mathematics", "Technology", "STEM", 
 # Add a new column to classify professors as STEM or Non-STEM
 ThresholdergedDf['STEM'] = ThresholdergedDf['Major'].str.contains('|'.join(stem_keywords), case=False, na=False)
 
+
 # Calculate summary statistics for STEM and Non-STEM professors
 stem_summary = ThresholdergedDf.groupby('STEM').agg(
     median_rating=('AvgRating', 'median'),
@@ -848,8 +847,6 @@ stem_summary = ThresholdergedDf.groupby('STEM').agg(
 # Rename categories for clarity
 stem_summary['STEM'] = stem_summary['STEM'].replace({True: 'STEM', False: 'Non-STEM'})
 
-# Print summary
-print(stem_summary)
 
 # Visualization: Histogram of Ratings for STEM vs. Non-STEM
 plt.figure(figsize=(10, 6))
@@ -876,6 +873,8 @@ plt.show()
 plt.figure(figsize=(10, 6))
 sns.boxplot(x='STEM', y='AvgRating', data=ThresholdergedDf, palette='Set3', width=0.5)
 
+
+
 # Adding labels, title, and grid
 plt.title('Box Plot of Average Ratings: STEM vs Non-STEM Professors')
 plt.xlabel('Category')
@@ -889,11 +888,10 @@ non_stem_ratings = ThresholdergedDf[ThresholdergedDf['STEM'] == False]['AvgRatin
 
 # Perform Mann-Whitney U-Test for STEM vs Non-STEM professors
 u_statistic_stem, p_value_stem = stats.mannwhitneyu(stem_ratings, non_stem_ratings, alternative='two-sided')
-print(f"Mann-Whitney U Test (STEM vs Non-STEM): U-statistic = {u_statistic_stem}, p-value = {p_value_stem}")
+
 
 # Calculate Cohen's d for STEM vs Non-STEM
 median_stem = stem_ratings.median()
 median_non_stem = non_stem_ratings.median()
 std_combined_stem = np.sqrt(((stem_ratings.std() ** 2) + (non_stem_ratings.std() ** 2)) / 2)
 cohens_d_stem = (median_stem - median_non_stem) / std_combined_stem
-print(f"Cohen's d (STEM vs Non-STEM): {cohens_d_stem}")
